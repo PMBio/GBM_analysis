@@ -6,6 +6,7 @@ import numpy as np
 import logging
 from tqdm import tqdm
 import sklearn
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,8 @@ def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, gen
         acc: Dataframe of TFs x Topics containing average accessibility of each TF on the cells where
             each topic is active. Should be scaled across topics (values between 0 and 1).
         regulons: 3-D numpy matrix ( Topics x TFs x Genes) with the regulon of each TF in each Topic.
+        genes: list of genes considered in scdori regulons.
+        TFs: list of TFs considered in scdori regulons.
         low_exp_TFs: TFs to exclude from analysis due to scattered expression or low expression in 
             all dataset. 
         gex_thresh: Expression threshold determining set of TFs expressed in cells of each topic.
@@ -261,7 +264,7 @@ def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, gen
 
     #Compute background activation/repression potential between pairs of topics using randomized eGRNs. 
     if compute_significance:
-        topic_reg_matrix , random_background = compute_randomized_topic_regulation(topics, activity, gex, acc, regulons, genes, gex_thresh=gex_thresh, TR_thresh=TR_thresh, regulation=regulation, use_exp=use_exp, n=n, percentile=percentile)
+        topic_reg_matrix , random_background = compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, acc, regulons, genes, TFs, gex_thresh=gex_thresh, TR_thresh=TR_thresh, regulation=regulation, use_exp=use_exp, n=n, percentile=percentile)
     else:
         random_background=[]
         
@@ -276,7 +279,7 @@ def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, gen
         
     return topic_reg_matrix, tf_tr_links, random_background
 
-def compute_randomized_topic_regulation(topics, activity, gex, acc, regulons, genes, gex_thresh=0.5, TR_thresh=0.05, regulation="activation", use_exp=False, n=1000, percentile=90):
+def compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, acc, regulons, genes,TFs, gex_thresh=0.5, TR_thresh=0.05, regulation="activation", use_exp=False, n=1000, percentile=90):
     """
     Compute topic regulation potential with randomized GRNs to assess significance of real values.
 
@@ -298,6 +301,8 @@ def compute_randomized_topic_regulation(topics, activity, gex, acc, regulons, ge
         acc: Dataframe of TFs x Topics containing average accessibility of each TF on the cells where
             each topic is active. Should be scaled across topics (values between 0 and 1).
         regulons: 3-D numpy matrix ( Topics x TFs x Genes) with the regulon of each TF in each Topic.
+        genes: list of genes considered in scdori regulons.
+        TFs: list of TFs considered in scdori regulons.
         gex_thresh: Expression threshold determining set of TFs expressed in cells of each topic.
             Default is 0.5.
         TR_thresh: Activity score threshold determining topic regulators (TRs) for each topic.
@@ -328,8 +333,8 @@ def compute_randomized_topic_regulation(topics, activity, gex, acc, regulons, ge
         prev_cols = regulon_s.columns
         
         #empty array to save background weights
-        rand_weights = np.empty(shape=[0,len(topics)-1]) 
-        for _ in tqdm(range(n)): #Compute background n times
+        rand_weights = np.empty(shape=[0,len(topics)]) 
+        for _ in range(n): #Compute background n times
             #shuffle rows of GRN
             regulon_s_shuff = regulon_s.iloc[np.random.permutation(len(regulon_s.index))].reset_index(drop=True) 
             regulon_s_shuff.index = prev_ind
@@ -385,13 +390,14 @@ def compute_randomized_topic_regulation(topics, activity, gex, acc, regulons, ge
         randomized_weights = np.append(randomized_weights,rand_weights,axis=1) 
         
     randomized_weights = pd.DataFrame(randomized_weights).transpose()
-    #source_topic=[]
-    #target_topic =[]
-    #for s in topics:
-    #    for e in topics:
-    #        if s != e:
-    #            source_topic.extend([s])
-    #            target_topic.extend([e])
+    randomized_weights.columns=[str(i) for i in range(n)]
+    
+    source_topic=[]
+    target_topic =[]
+    for s in topics:
+        for e in topics:
+            source_topic.extend([s])
+            target_topic.extend([e])
                 
     topic_pairs = pd.DataFrame({'Source_topic':source_topic,'Target_topic':target_topic})
     random_background = pd.concat([topic_pairs, randomized_weights], axis=1)
@@ -407,7 +413,7 @@ def compute_randomized_topic_regulation(topics, activity, gex, acc, regulons, ge
     random_background = random_background[ord_columns]
 
     #Reshape background threshold values to match topic regulation potential
-    background_mask = percentile_vals.reshape(len(topics),len(topics))
+    background_mask = np.array(percentile_vals).reshape(len(topics),len(topics))
     background_mask = pd.DataFrame(background_mask, columns = topics)
     background_mask.index = topics
 
