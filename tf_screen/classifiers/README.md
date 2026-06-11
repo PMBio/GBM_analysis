@@ -4,7 +4,7 @@ Two scripts that train the supervised classifiers used downstream to assign per-
 
 1. **`train_state_classifier.py`** — fits two multinomial logistic regressions on the Harmony embedding: a *fine* classifier (9 GB cell states) and a *coarse* classifier (5 GB cell states defined by `config.COARSE_GROUPS`). The *Proliferative* state is excluded from both because it is a cell-cycle programme rather than a stable cell-state identity.
 2. **`train_topic_classifier.py`** — fits a single multinomial logistic regression over the 19 GB-intrinsic topics listed in `config.TOPICS_TRAINED`.
-3. 
+   
 Both scripts (i) train on the atlas portion of the joint object, (ii) apply the trained model to **every** cell (atlas + screen) and write the resulting probabilities back into the joint AnnData's `.obs` columns, and (iii) persist the model, the standard scaler, and the label encoder as `.pkl` files for later use without re-training.
 
 ---
