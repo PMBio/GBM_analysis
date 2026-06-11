@@ -38,25 +38,9 @@ python tf_expression/control_p.py10_validation
 
 ---
 
-## Two flavours of log2FC
-
-Both are reported in the output CSV; the second is the headline number:
-
-| Column | Definition | Used for |
-|---|---|---|
-| `log2fc_counts` | log2( mean OE counts / mean Ctrl counts ) | Diagnostic only. |
-| `log2fc_lognorm` | (mean log OE − mean log Ctrl) / ln(2) | All paper figures. |
-
-`log2fc_lognorm` is equivalent to the log2 ratio of geometric means of normalised expression, and matches the conventional output of `scanpy.tl.rank_genes_groups` and `Seurat::FindMarkers`. The arithmetic-mean variant is shown alongside only to expose extreme-value bias (relevant for low-detection TFs).
-
 ## Why the p10 control filter doesn't bias the analysis
 
 Control cells in GB are heterogeneous: any given TF is intrinsically high in some cell states (e.g. SOX10 in OPC-like cells) and intrinsically low in others. Comparing OE cells against the full control pool therefore lets some control cells "leak" toward the perturbation's target state. Restricting the control pool to the bottom 10% of TF expressors (the *p10* strategy) suppresses this leakage.
 
 `control_p10_validation.py` checks that this restriction does not itself bias the cell-state composition of the control pool. For each TF and each cell line it reports the change in coarse-state proportions (and entropy) between the full and p10-filtered controls. The pooled median shift across all 55 TFs is close to zero (Extended Data Fig. 5c, right), confirming that p10 enriches for low TF-expressing controls without systematically skewing state composition.
 
-## Notes
-
-* Sarle's bimodality coefficient is computed inside `tf_self_expression.py` per TF and per scope; the values cited in the paper text (all 55 TFs with BC > 0.555, mean 0.71) come from the `pooled` rows of `tf_expression_results.csv`.
-* Mann–Whitney U is run on raw library-size-normalised counts (not on the log1p matrix); scanpy's internal normalisation is replicated here so the test is invariant to whether the input matrix happens to already be log-transformed.
-* BH multiple-testing correction is applied **per scope** (pooled, BG5, P3, S24), not across scopes. This matches the convention used in the downstream state-testing pipeline.
