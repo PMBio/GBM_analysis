@@ -128,8 +128,10 @@ def _fit_logreg(X: np.ndarray, y: np.ndarray,
     X_tr_s = scaler.fit_transform(X_tr)
     X_te_s = scaler.transform(X_te)
 
+    # NOTE: scikit-learn >=1.7 removed the multi_class kwarg; multinomial
+    # (soft-max) is the default for the lbfgs solver, so omitting it
+    # preserves the original behaviour while staying forward-compatible.
     model = LogisticRegression(
-        multi_class="multinomial",
         solver=config.LR_SOLVER,
         max_iter=config.LR_MAX_ITER_STATE,
         C=config.LR_C,

@@ -110,8 +110,10 @@ def train_topic_classifier(adata: sc.AnnData
     X_tr_s = scaler.fit_transform(X_tr)
     X_te_s = scaler.transform(X_te)
 
+    # NOTE: scikit-learn >=1.7 removed the multi_class kwarg; multinomial
+    # (soft-max) is the default for the lbfgs solver, so omitting it
+    # preserves the original behaviour while staying forward-compatible.
     model = LogisticRegression(
-        multi_class="multinomial",
         solver=config.LR_SOLVER,
         max_iter=config.LR_MAX_ITER_TOPIC,
         C=config.LR_C,
