@@ -41,12 +41,4 @@ python preprocessing/run_harmony.py
 python preprocessing/qc_figures.py
 ```
 
-## Why Harmony is in a separate step
 
-The original script (`validation_pipeline_complete.py`) combined Harmony with state-classifier training. They are split here because (i) the Harmony embedding is consumed by *both* state and topic classifiers downstream and should not be re-computed twice, and (ii) splitting makes it easy to swap in a different batch-correction method (scVI, scANVI, etc.) without touching the classifier code. The trade-off is one extra `.npy` file on disk.
-
-## Notes
-
-* `qc_figures.py` does not filter the AnnData — all filtering is upstream (in the ScaleBio cell-call and the guide assignment step). It only summarises and visualises.
-* `run_harmony.py` reads the joint object from disk, normalises in-place if not already normalised (`utils.normalise_lognorm` is idempotent), and writes the corrected embedding as a 2-D `float32` `.npy` aligned to the joint object's cell order.
-* The output of `build_joint_anndata.py` should have ≈ 357,000 cells total (atlas exclusive-topic cells + guide-assigned screen cells). Numbers will differ slightly depending on which version of the atlas annotations is in use.
