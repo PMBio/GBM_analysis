@@ -321,7 +321,7 @@ def multinomial_lrt(state_labels, is_oe, cell_line=None):
     # ---- Fit full model ----
     try:
         clf_full = LogisticRegression(
-            multi_class='multinomial',
+            
             solver='lbfgs',
             C=1e6,              # essentially no regularisation
             max_iter=500,
@@ -340,7 +340,7 @@ def multinomial_lrt(state_labels, is_oe, cell_line=None):
         # Null has cell_line covariates → fit with sklearn
         try:
             clf_null = LogisticRegression(
-                multi_class='multinomial',
+                
                 solver='lbfgs',
                 C=1e6,
                 max_iter=500,
@@ -1019,7 +1019,7 @@ if __name__ == '__main__':
     # Load Harmony into FULL adata BEFORE any subsetting
     # (prevents shape mismatch when subsetting obsm)
     print("\nLoading Harmony embeddings...")
-    harmony_path = Config.BASE_DIR / 'harmony_200pc' / 'harmony_embeddings.npy'
+    harmony_path = config.HARMONY_DIR / 'harmony_embeddings.npy'
     if not harmony_path.exists():
         raise FileNotFoundError(f"Harmony not found: {harmony_path}")
     X_harmony = np.load(harmony_path)
@@ -1035,7 +1035,7 @@ if __name__ == '__main__':
     # Load models and predict coarse state probabilities
     # ------------------------------------------------------------------
     print("\nLoading coarse state models...")
-    model_dir   = Config.BASE_DIR / 'models'
+    model_dir   = config.MODELS_DIR
     clf_coarse  = joblib.load(model_dir / 'clf_celltype_coarse.pkl')
     scaler_coarse = joblib.load(model_dir / 'scaler_celltype_coarse.pkl')
     le_coarse   = joblib.load(model_dir / 'le_celltype_coarse.pkl')

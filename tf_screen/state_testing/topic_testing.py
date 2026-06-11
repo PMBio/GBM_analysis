@@ -43,10 +43,10 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from tf_screen import config
+from tf_screen.state_testing.state_testing import (compare_strategies,
+                                                   filter_cells_by_strategy,
+                                                   test_tf_effects)
 from tf_screen.utils import list_cell_lines
-
-from .state_testing import (compare_strategies, filter_cells_by_strategy,
-                            test_tf_effects)
 
 warnings.filterwarnings("ignore")
 
