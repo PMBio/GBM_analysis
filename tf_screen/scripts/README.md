@@ -19,4 +19,4 @@ Each script declares typical memory and time requirements based on what the orig
 * The original cluster used `conda activate LINGER`. Replace with the name of your conda env (or `source ./venv/bin/activate` if using a venv).
 * Output paths are read from `config.py`. Set `OUTPUT_DIR` to somewhere on the cluster's scratch space before submitting.
 * The DE job for all four strategies writes ~50 GB. If disk is limited, restrict to the primary `all_all` strategy: change `python differential_expression/wilcoxon_de.py` to `python differential_expression/wilcoxon_de.py all_all`.
-* For Slurm or other schedulers, adapt the `#BSUB` directives. The shape of the workflow (one job per pipeline step) is unchanged.
+* For Slurm or other schedulers, adapt the `#BSUB` directives. 
