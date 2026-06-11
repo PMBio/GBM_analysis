@@ -1,9 +1,6 @@
 # TF screen analysis
 
-Analysis pipeline for the 55-TF gain-of-function screen in patient-derived GB cell lines, accompanying the manuscript
-
-> *(paper citation — to be updated on publication)*
-
+Analysis pipeline for the 55-TF gain-of-function screen in patient-derived GB cell lines
 This subdirectory of the [`PMBio/GBM_analysis`](https://github.com/PMBio/GBM_analysis) repository contains all code used to go from cleaned, guide-assigned single-cell AnnData to the per-TF effect tables and differential-expression results that feed the paper's TF-screen figures (Fig. 3, Extended Data Fig. 5). Final figure layout was done in Affinity Designer from these tables — the scripts here produce the underlying data, not the publication-ready panels.
 
 For the corresponding experimental description, see the manuscript supplement, section 3.4.
@@ -56,14 +53,9 @@ SCREEN_ANNDATA  +  ATLAS_RNA_ANNDATA  +  atlas annotations  +  scDoRI topic gene
                   ┌────────────────────────────┐
                   │ 7. downstream/             │
                   │    gsea_state_signatures   │
-                  │    high_confidence_drivers │
-                  │    mechanism_decomposition │
-                  │                  (stubs)   │
+                  │    high_confidence_drivers │ │
                   └────────────────────────────┘
 ```
-
-Steps 1–6 are fully open and run as a stand-alone pipeline. Step 7 is a placeholder for analyses currently maintained separately; see `downstream/README.md`.
-
 ---
 
 ## Repository layout
@@ -117,14 +109,14 @@ Quick map of where each script's output lives. Paths below are relative to the `
 | Script | Produces |
 |---|---|
 | `tf_self_expression.py` | `tf_expression/tf_expression_results.csv` — per (TF, cell line) and pooled: arithmetic-mean and geometric-mean log2FC of the TF's own expression, Sarle's bimodality coefficient, Mann–Whitney U with BH-FDR. Source of the OE-vs-Ctrl induction summary in the paper. |
-| `control_p10_validation.py` | `control_state_analysis/control_state_shifts.csv` — per (TF, state) coarse-state composition shift between all controls and the p10-filtered subset. Confirms p10 doesn't bias state composition (data behind ED Fig. 5c). |
+| `control_p10_validation.py` | `control_state_analysis/control_state_shifts.csv` — per (TF, state) coarse-state composition shift between all controls and the p10-filtered subset. Confirms p10 doesn't bias state composition |
 
 ### Step 4 — `state_testing/`
 
 | Script | Produces |
 |---|---|
 | `state_testing.py` | `state_testing/<strategy>/{fine_grained,coarse}_effects.csv` for each of 16 FC × control-percentile filtering strategies. Each row is one (TF, state, cell line) with t-test, Wilcoxon, permutation p-values + FDRs, Cohen's d, and a `sig_consensus` flag. **Headline strategy is `FC0.5_p10`.** Source of the TF × state heatmap in Fig. 3c. |
-| `topic_testing.py` | `topic_testing/<strategy>/topic_effects.csv` — same as above but for the 16 tested topics. Source of the TF × topic scatter in Fig. 3d. |
+| `topic_testing.py` | `topic_testing/<strategy>/topic_effects.csv` — same as above but for the 16 tested topics. Source of the TF × topic scatter extended data figure 5 |
 | `proportion_testing.py` | `proportion_testing/<strategy>/proportion_lrt.csv` (per-TF multinomial LRT) + `proportion_fisher.csv` (per-TF-per-state Fisher's exact). Source of the OR > 1.5 "black-box" overlay annotation in Fig. 3c. |
 
 ### Step 5 — `dose_response/`
@@ -139,10 +131,6 @@ Quick map of where each script's output lives. Paths below are relative to the `
 | Script | Produces |
 |---|---|
 | `wilcoxon_de.py` | `differential_expression/<strategy>/<cell_line>__<TF>__DE.csv` (per-(TF, line) Wilcoxon tables with `log2FC`, `pvals_adj`, `signed_fdr`) + `intersection/*.csv` (genes significant in ≥2/3 lines with consistent direction). The `signed_fdr` column is the input to the GSEA stub in step 7. **The headline strategy is `all_all`** (all OE vs all Ctrl, no FC/p10 filter on the DE itself). |
-
-### Step 7 — `downstream/` (stubs)
-
-These are placeholders for the GSEA + high-confidence-driver + activator/repressor decomposition analyses. The production code is maintained separately and will be added in the next release. See `downstream/README.md`.
 
 ---
 
@@ -181,12 +169,10 @@ No installation of this repo itself is needed — each script adds the package r
 ### 3. Get the data
 
 ```
-Zenodo:  [TO FILL: DOI on publication]
-GEO:     [TO FILL: GSE accession for the raw FASTQs]
+
+GEO:     [GSE accession on publication]
 ```
-
-The Zenodo deposit contains the cleaned screen `.h5ad`, the GB patient atlas RNA `.h5ad`, the precomputed Harmony embedding, the trained classifier `.pkl` files, and the per-strategy effect tables. See `docs/data_availability.md` for the file-by-file inventory.
-
+The deposit contains the cleaned screen `.h5ad` The atlas RNA anndata can be downloaded from https://www.gbmspace.org/
 ### 4. Configure paths
 
 ```bash
@@ -233,8 +219,6 @@ LSF cluster submission templates are in `scripts/`.
 Every stochastic step uses `config.RANDOM_SEED` (default 42), passed explicitly to PCA, Harmony, classifier train/test splits, `LogisticRegression` fits, Leiden clustering and its KNN graph, and the permutation tests.
 
 Per-comparison permutation seeds (one per (TF, state, cell line) cell in the state-testing grid) are derived from a deterministic hash of the comparison labels, so the null distribution for any single cell is reproducible even if other parts of the grid are skipped.
-
-The dependency stack itself is the only source of run-to-run variation; the versions listed above match the conda environment used to produce the published numbers.
 
 ---
 
