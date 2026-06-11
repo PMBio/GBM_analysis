@@ -3,8 +3,8 @@
 Two scripts that train the supervised classifiers used downstream to assign per-cell state and topic probabilities to every screen cell.
 
 1. **`train_state_classifier.py`** — fits two multinomial logistic regressions on the Harmony embedding: a *fine* classifier (9 GB cell states) and a *coarse* classifier (5 GB cell states defined by `config.COARSE_GROUPS`). The *Proliferative* state is excluded from both because it is a cell-cycle programme rather than a stable cell-state identity.
-2. **`train_topic_classifier.py`** — fits a single multinomial logistic regression over the 19 GB-intrinsic topics listed in `config.TOPICS_TRAINED`. Topic probabilities sum to one per cell.
-
+2. **`train_topic_classifier.py`** — fits a single multinomial logistic regression over the 19 GB-intrinsic topics listed in `config.TOPICS_TRAINED`.
+   
 Both scripts (i) train on the atlas portion of the joint object, (ii) apply the trained model to **every** cell (atlas + screen) and write the resulting probabilities back into the joint AnnData's `.obs` columns, and (iii) persist the model, the standard scaler, and the label encoder as `.pkl` files for later use without re-training.
 
 ---
@@ -54,10 +54,9 @@ Downstream scripts read these `.obs` columns directly; the `.pkl` files exist so
 
 ## Notes
 
-* **Multinomial, not one-vs-rest.** All three classifiers use `multi_class="multinomial"` (soft-max). The 5 coarse-state probabilities sum to one per cell, and the 19 trained-topic probabilities also sum to one. The earlier classifier in the original codebase was fit with `multi_class="ovr"`; switching to multinomial gives the per-cell probabilities a direct compositional interpretation (a TF-induced *increase* in one state's probability necessarily comes from *decreases* in others), which is what the paper relies on.
 
-* **Topic exclusion happens downstream.** All 19 topics in `config.TOPICS_TRAINED` are used to fit the topic classifier. The smaller list `config.TOPICS_TESTED` (16 topics — Topics 7, 23, and 29 dropped due to unstable cross-validation performance) is applied later in `state_testing/topic_testing.py`. Keeping all 19 in the classifier preserves the soft-max normalisation.
+* **Topic exclusion happens downstream.** All 19 topics in `config.TOPICS_TRAINED` are used to fit the topic classifier. 
 
 * **Random seed.** `config.RANDOM_SEED` (default 42) is passed to both the 80/20 stratified split and the logistic-regression fit, so results are deterministic given the same input matrix.
 
-* **What's *not* re-runnable bit-identically.** The original models in the Zenodo deposit were trained with `multi_class="ovr"` for the topic classifier; re-training with the cleaned multinomial code will produce different probability values (though qualitatively similar predictions). The classifier *.pkl* files in the deposit are the authoritative versions used to produce the published figures.
+

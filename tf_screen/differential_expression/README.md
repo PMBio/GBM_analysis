@@ -1,8 +1,8 @@
 # Differential expression (step 6)
 
-Single-cell Wilcoxon rank-sum differential expression of OE versus control cells, per cell line, for every TF. The output is (i) per-(TF, cell line) DE tables, (ii) a cross-line intersection of genes significant in ≥2/3 lines with consistent direction, and (iii) a per-gene **signed-FDR** score that is the input to the pre-ranked GSEA in `downstream/gsea_state_signatures.py`.
+Single-cell Wilcoxon rank-sum differential expression of OE versus control cells, per cell line, for every TF. The output is (i) per-(TF, cell line) DE tables, (ii) a cross-line intersection of genes significant in ≥2/3 lines with consistent direction, and (iii) a per-gene **signed-FDR** score 
 
-The script supports four cell-selection strategies (all OE vs all Ctrl, FC-filtered OE vs all Ctrl, all OE vs p10 Ctrl, FC-filtered OE vs p10 Ctrl). **The primary analysis used in Fig. 3 of the paper is `all_all`** (all cells, both sides); the other three are sensitivity strategies reported in the supplementary table.
+The script supports four cell-selection strategies (all OE vs all Ctrl, FC-filtered OE vs all Ctrl, all OE vs p10 Ctrl, FC-filtered OE vs p10 Ctrl). **The primary analysis used in Fig. 3 of the paper is `all_all`** (all cells, both sides).
 
 ---
 
@@ -74,8 +74,5 @@ The intersection file's `direction_consistent` flag captures the direction-agree
 ---
 
 ## Notes
-
-* **Wilcoxon is the primary DE in the paper.** The pseudobulk DESeq2 analysis (referenced in the supplementary methods as a sensitivity check) is not included in this repo; it was run with a paired-drop, downsampled-control design but is no longer the headline analysis.
 * **Minimum cells per group**: 20 (`config.MIN_CELLS_PER_GROUP`). Comparisons below this threshold are skipped and not written to disk.
-* **Random seed**: scanpy's `rank_genes_groups` is deterministic given the same input; no seed is required.
 * **Output volume**: at 55 TFs × 3 cell lines × 4 strategies × ≈20k genes, the per-(TF, line) CSVs total ~50 GB if you keep them all. Consider running only the primary strategy first, then dropping the per-(TF, line) files and keeping only the combined ``all_DE_results.csv`` and the intersection outputs.
