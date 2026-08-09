@@ -7,7 +7,7 @@ Heinzelmann E, Gracia T, Memi T *et al.*
 ![Dataset overview](dataset.png)
 
 Everything here is downstream of **scDoRI** ([bioFAM/scDoRI](https://github.com/bioFAM/scDoRI)).
-No data ships with the code — see [Data availability](#data-availability).
+For data, see [Data availability](#data-availability).
 
 ---
 
