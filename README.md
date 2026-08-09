@@ -69,34 +69,17 @@ axes cannot fall out of sync.
 
 ---
 
-## Things that will trip you up
+## Things to keep in mind
 
 **Two activator GRNs, not interchangeable.** The ATAC-based one is not fine-tuned
 against TF–gene expression and is what TAP uses; the fine-tuned one is anchored
-to observed expression. Different scales, 45,110 shared links, r = 0.09 on that
-support — don't mix or compare their weights.
+to observed expression.
 
 **Repressor weights are negative.** In both the GRN tensors and the peak object.
 Percentile colour limits applied naively will highlight the weakest sites.
 
 **Raw TF binding is not comparable between TFs.** Standardise with the per-TF
 mean and sd stored in the peak object before comparing factors.
-
-**Gene–peak links are effectively binary.** Median 0.83, top decile above 0.98 —
-treat as set membership, not weight. Summed link weight per gene tracks peak
-count and therefore gene length (Spearman 0.98), so it is not comparable between
-genes; ranking by it returns long genes. Comparing a gene against itself across
-topics is fine. Per-peak argmax assignment is safe — under 2 % of peaks link to
-more than one gene.
-
-**SCENIC+ was run on metacells**, not single cells, and the per-cell-type
-networks are inferred independently — they are not subsets of the global network
-and shared links can differ in direction.
-
-**Topic subsets differ by file.** 50 topics trained, 31 with gene loadings, 20 in
-the TF-by-topic matrices, **17 GB tumour topics** for TAP/TRS. The order of the 17
-is unsorted and significant — it is the row/column order of the published heat
-maps. Topic-set membership is in the Zenodo topic annotation table.
 
 ---
 
