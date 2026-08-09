@@ -18,7 +18,7 @@ No data ships with the code — see [Data availability](#data-availability).
 | `TAP_TRS_analysis.ipynb` | Topic activation potential (TAP), topic repression score (TRS), net topic transitions, state-level regulation | `data/` + Zenodo GRN tensors |
 | `plot_supp_peak_object.ipynb` | Peak-level panels: peak-topic UMAPs, accessibility per state, TF binding, gene–peak links | Zenodo peak AnnData |
 | `plasticity_analysis.ipynb` | Epigenetic plasticity — entropy of ATAC-based cell-state classifier probabilities | ArrayExpress metacell objects |
-| `python_scripts/topic_regulation.py` | TAP/TRS implementation ([API](#taptrs-api)) | — |
+| `python_scripts/topic_regulation.py` | — |
 | `tf_screen/` | 55-TF overexpression screen pipeline, Fig. 3 and ED Fig. 5 — [own README](tf_screen/README.md) | GEO |
 
 ---
@@ -27,29 +27,14 @@ No data ships with the code — see [Data availability](#data-availability).
 
 | file | shape | role |
 |---|---|---|
-| `data/topic_tf_activator_true_exp_05_03_raw.tsv` | 50 topics × 195 TFs | activator TF activity per topic — defines each topic's regulators |
-| `data/topic_tf_repressor_true_exp_05_03_raw.tsv` | 50 topics × 195 TFs | repressor TF activity per topic |
-| `data/gene_exp_by_selected_topics_scaled_allTFs.csv` | 195 TFs × 20 topics | mean scaled TF expression per topic |
-| `data/gene_score_by_selected_topics_scaled_allTFs.csv` | 195 TFs × 20 topics | mean scaled TF gene activity (ATAC) per topic |
-| `data/topic_gene_sel.csv` | 3,192 genes × 31 topics | topic-gene loadings; gene axis order for the GRN tensors |
+| `data/topic_tf_activator_true_exp_05_03_raw.tsv` | 50 topics × 195 TFs | expression of activator TFs |
+| `data/topic_tf_repressor_true_exp_05_03_raw.tsv` | 50 topics × 195 TFs | expression of repressor TFs |
+| `data/gene_exp_by_selected_topics_scaled_allTFs.csv` | 195 TFs × 20 topics | mean scaled all TFs expression per topic |
+| `data/gene_score_by_selected_topics_scaled_allTFs.csv` | 195 TFs × 20 topics | mean scaled all TFs gene activity (ATAC) per topic |
+| `data/topic_gene_sel.csv` | 3,192 genes × 31 topics | topic-gene loadings |
 | Zenodo — ATAC-based activator GRN | 50 × 195 × 3,192 | activating TF→gene links per topic |
 | Zenodo — fine-tuned repressor GRN | 50 × 195 × 3,192 | repressing TF→gene links per topic |
-| Zenodo — topic activity per coarse state | 5 states × 50 topics | rolls topic-level scores up to cell states |
-
-### TAP/TRS API
-
-`python_scripts/topic_regulation.py`
-
-| function | returns |
-|---|---|
-| `get_activity_score` | TF activity per topic — summed weight of a TF's links to that topic's target genes |
-| `scale_gex_acc_topics` | scaled TF expression and gene activity across topics |
-| `compute_topic_regulation_potential` | source × target TAP or TRS matrix, plus the contributing TF→TR links. Optional permutation significance |
-| `compute_randomized_topic_regulation` | null background from randomised GRNs |
-| `get_net_regulatory_interactions` | net directed interactions, combining TAP and TRS |
-| `scale_topic_regulation_target_topic` | scores normalised within target topic |
-| `get_tf_topic_regulation` | per-TF decomposition of a topic-pair score |
-| `compute_state_level_regulation` | topic-level scores aggregated to cell states |
+| Zenodo — topic activity per coarse state | 5 states × 50 topics |
 
 Significance testing is off by default — enabling it runs 1,000 randomisations
 per topic and takes hours.
