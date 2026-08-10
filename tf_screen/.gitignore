@@ -1,0 +1,27 @@
+# Local environment / outputs
+config.py
+output/
+data/
+models/
+logs/
+*.h5ad
+*.pkl
+*.joblib
+*.npy
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,5 @@
+# Regenerable artifacts from the toy pipeline run.
+# Re-create with `python tf_screen/tests/make_toy_data.py` and then the
+# pipeline scripts (see REPORT.md).
+toy_data/
+toy_output/
