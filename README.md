@@ -81,7 +81,7 @@ it plots. Row order is significant: the notebook reshapes the column of threshol
 | ArrayExpress | `E-MTAB-17183` | Processed snRNA-seq and snATAC-seq AnnData; metacell-level RNA counts and ATAC gene scores (plasticity analysis) |
 | EGA | `EGAD00001015526` | Raw multiome sequencing data (controlled access) |
 | GEO | `GSE294518` | All remaining NGS data, including the TF screen |
-| Zenodo | `<ZENODO DOI>` | scDoRI regulatory output + SCENIC+ comparison networks |
+| Zenodo | `10.5281/zenodo.21873381` | scDoRI regulatory output + SCENIC+ comparison networks |
 
 Reference genome: hg38 (GRCh38).
 
