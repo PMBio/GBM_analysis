@@ -40,7 +40,7 @@ def get_activity_score(tf_activity, topics, low_exp_TFs=[]):
     
     return activity
 
-def scale_gex_acc_topics(gex, acc, topics,TFs=[]):
+def scale_gex_acc_topics(gex, acc, topics,TFs=[], exclude=[]):
     """
     Get scaled expression and accessibility values of TFs in each topic
 
@@ -55,6 +55,7 @@ def scale_gex_acc_topics(gex, acc, topics,TFs=[]):
             
     """
     if len(TFs)>0:
+        TFs = [tf for tf in TFs if tf not in exclude]
         gex = gex.loc[TFs]
         acc = acc.loc[TFs]
         
@@ -73,7 +74,7 @@ def scale_gex_acc_topics(gex, acc, topics,TFs=[]):
     return gex, acc
         
 
-def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, genes, low_exp_TFs=[], gex_thresh=0.5, TR_thresh=0.05, regulation="activation", use_exp=False, compute_significance=False, n=1000, percentile=90):
+def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, genes, TFs, gex_thresh=0.5, TR_thresh=0.05, regulation="activation", source_topics=[],use_exp=False, compute_significance=False, n=1000, percentile=90):
     """
     Compute activation/repression potential between pairs of topics.
 
@@ -99,9 +100,7 @@ def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, gen
             each topic is active. Should be scaled across topics (values between 0 and 1).
         regulons: 3-D numpy matrix ( Topics x TFs x Genes) with the regulon of each TF in each Topic.
         genes: list of genes considered in scdori regulons.
-        TFs: list of TFs considered in scdori regulons.
-        low_exp_TFs: TFs to exclude from analysis due to scattered expression or low expression in 
-            all dataset. 
+        TFs: list of TFs considered in scdori regulons. 
         gex_thresh: Expression threshold determining set of TFs expressed in cells of each topic.
             Default is 0.5.
         TR_thresh: Activity score threshold determining topic regulators (TRs) for each topic.
@@ -116,19 +115,12 @@ def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, gen
             Default is 1000.
         percentile: Percentile of randomized TAP/TRS value distribution for each topic pair, above which
             real TAP/TRS values for the same topic pair are considered significant.
+        topics_to_compute: 
  
     
     """
     if regulation not in ("activation", "repression"):
         raise ValueError("Invalid regulation mode. Only 'activation' or 'repression' are allowed.")
-    TFs = list(gex.index)
-    #Remove lowly expressed TFs
-    if len(low_exp_TFs)>0:
-        #activity = activity.drop(low_exp_TFs)
-        gex = gex.drop(low_exp_TFs)
-        acc = acc.drop(low_exp_TFs)
-        #Scale activity scores between 0 and 1 within each topic
-        activity=(activity-activity.min())/(activity.max()-activity.min())
     
     #If assessing repression, get signatures of closed chromatin
     if regulation == "repression": 
@@ -145,8 +137,14 @@ def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, gen
     weight_val_exp=[]
     weight_val_tot =[]
     logger.info("Computing regulatory interactions between topics")
-    for topic_s in tqdm(topics):
+    if len(source_topics)>0:
+        topics_s = source_topics
+    else:
+        topics_s = topics
+
+    for topic_s in tqdm(topics_s):
         tf_s_exp = list(gex.index[gex[topic_s]>gex_thresh]) #Expressed TFs in source topic
+        
         top_tfs_s = activity[topic_s].sort_values(ascending = False)
         top_tfs_s_vals=list(top_tfs_s) #Activity score of TRs of source topic
         top_tfs_s=[tf for tf,val in zip(top_tfs_s.index,top_tfs_s_vals) if val>TR_thresh] #TRs of source topic
@@ -258,28 +256,216 @@ def compute_topic_regulation_potential(topics, activity, gex, acc, regulons, gen
                                 'Weight_act_score':weight_val_act_score})
 
     #Activation/repression potential between each pair of topics
-    topic_reg_matrix = np.array(weight_val_tot).reshape(len(topics),len(topics))
+    topic_reg_matrix = np.array(weight_val_tot).reshape(len(topics_s),len(topics))
     topic_reg_matrix = pd.DataFrame(topic_reg_matrix, columns = topics)
-    topic_reg_matrix.index = topics
+    topic_reg_matrix.index = topics_s
 
     #Compute background activation/repression potential between pairs of topics using randomized eGRNs. 
     if compute_significance:
-        topic_reg_matrix , random_background = compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, acc, regulons, genes, TFs, gex_thresh=gex_thresh, TR_thresh=TR_thresh, regulation=regulation, use_exp=use_exp, n=n, percentile=percentile)
+        topic_reg_matrix , random_background = compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, acc, regulons, genes, TFs, source_topics = source_topics, gex_thresh=gex_thresh, TR_thresh=TR_thresh, regulation=regulation, use_exp=use_exp, n=n, percentile=percentile)
     else:
         random_background=[]
         
-    #Number of expressed TFs per topic
-    num_exp_TFs_per_topic=pd.DataFrame((gex>gex_thresh).sum(axis=0))
-    num_exp_TFs_per_topic = num_exp_TFs_per_topic.transpose()
-    num_exp_TFs_per_topic.columns=topics
-    
-    #Normalize TAP/TRS values by number of TFs expressed in each source topic
-    for t in topics:
-        topic_reg_matrix.loc[t]=topic_reg_matrix.loc[t]/num_exp_TFs_per_topic[t][0]
         
     return topic_reg_matrix, tf_tr_links, random_background
 
-def compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, acc, regulons, genes,TFs, gex_thresh=0.5, TR_thresh=0.05, regulation="activation", use_exp=False, n=1000, percentile=90):
+def compute_topic_regulation_potential_oneGRN(topics, activity, gex, acc, regulons, genes, TFs, gex_thresh=0.5, TR_thresh=0.05, regulation="activation", source_topics=[],use_exp=False, compute_significance=False, n=1000, percentile=90):
+    """
+    Compute activation/repression potential between pairs of topics.
+
+    Outputs:
+        topic_reg_matrix: Dataframe (source topics x target topics) containing TAP or TRS values 
+            for each topic pair, normalized by total number of expressed TFs in source topic. If
+            compute_significance is True, non-significant TAP/TRS values will be set to 0.
+        tf_tr_links: Dataframe containing all regulatory links from TFs expressed in each source
+            topic to TRs of each target topic. For each TR target, includes expression and 
+            accessibility in source topic and activity score in target topic.
+        random_background: If compute_significance is True, dataframe containing significance 
+            thresholds for topic regulation values of every topic pair, as well as distribution 
+            of randomized values used to compute these thresholds for every topic pair.
+    
+    Args:
+        topics: list of strings with all topics to consider. Must match topic names in activity, 
+            gex and acc dataframes.
+        activity: Dataframe of TFs x Topics contaning activation score (if assessing TR regulation)
+            or repression score (if assessing top repressor regulation) for each TF in each topic.
+        gex: Dataframe of TFs x Topics containing average expression of each TF on the cells where
+            each topic is active. Should be scaled across topics (values between 0 and 1)
+        acc: Dataframe of TFs x Topics containing average accessibility of each TF on the cells where
+            each topic is active. Should be scaled across topics (values between 0 and 1).
+        regulons: DataFrame (TFs x Genes) with the regulatory links from each TF.
+        genes: list of genes considered in scdori regulons.
+        TFs: list of TFs considered in scdori regulons. 
+        gex_thresh: Expression threshold determining set of TFs expressed in cells of each topic.
+            Default is 0.5.
+        TR_thresh: Activity score threshold determining topic regulators (TRs) for each topic.
+            Default is 0.05.
+        regulation: Determines regulation to compute between topics. Must be either "activation"
+            or "repression".
+        use_exp: Boolean variable determining if expression of TRs should be used instead of 
+            accessibility to assess TR priming.
+        compute_significance: Boolean variable determining if significance of TAP/TRS values should
+            be computed.  
+        n: If compute_significance is True, determines number of times to compute randomized background.
+            Default is 1000.
+        percentile: Percentile of randomized TAP/TRS value distribution for each topic pair, above which
+            real TAP/TRS values for the same topic pair are considered significant.
+        topics_to_compute: 
+ 
+    
+    """
+    if regulation not in ("activation", "repression"):
+        raise ValueError("Invalid regulation mode. Only 'activation' or 'repression' are allowed.")
+    
+    #If assessing repression, get signatures of closed chromatin
+    if regulation == "repression": 
+        acc = 1-acc
+        
+    source_topic=[]
+    target_topic=[]
+    source_tf =[]
+    target_tf=[]
+    weight_s=[]
+    weight_t =[]
+    weight_val_act_score =[]
+    weight_val_acc =[]
+    weight_val_exp=[]
+    weight_val_tot =[]
+    logger.info("Computing regulatory interactions between topics")
+    if len(source_topics)>0:
+        topics_s = source_topics
+    else:
+        topics_s = topics
+
+    for topic_s in tqdm(topics_s):
+        tf_s_exp = list(gex.index[gex[topic_s]>gex_thresh]) #Expressed TFs in source topic
+        top_tfs_s = activity[topic_s].sort_values(ascending = False)
+        top_tfs_s_vals=list(top_tfs_s) #Activity score of TRs of source topic
+        top_tfs_s=[tf for tf,val in zip(top_tfs_s.index,top_tfs_s_vals) if val>TR_thresh] #TRs of source topic
+        
+        #Get GRN of source topic
+        #regulon_s = pd.DataFrame(regulons[int(topic_s),:,:],columns=genes)
+        #regulon_s.index = TFs
+        #regulon_s = regulon_s.transpose()
+        
+        regulon_s = regulons
+        
+        for topic_t in topics:
+            target = []
+            source=[]
+            weight_acc = []
+            weight_exp=[]
+            weight_act_score = []
+            if topic_s != topic_t:
+                top_tfs_e = activity[topic_t].sort_values(ascending = False)
+                top_tfs_e_vals=list(top_tfs_e) #Activity score of TRs of target topic
+                top_tfs_e=[tf for tf,val in zip(top_tfs_e.index,top_tfs_e_vals) if val>TR_thresh]
+                for tf in tf_s_exp:   
+                    regulon_s_tf = regulon_s[tf].copy() #target genes of TF
+                    
+                    if regulation == "activation":
+                        #if TF in source topic is a TR of target topic, but not a TR of source topic, add recursive link
+                        if (tf in top_tfs_e) and (tf not in top_tfs_s): 
+                            source.extend([tf])
+                            target.extend(["self"])
+                            weight_acc.extend([acc[topic_s].loc[tf]])
+                            weight_exp.extend([gex[topic_s].loc[tf]])
+                            weight_act_score.extend([activity[topic_t].loc[tf]])
+                        #activated TRs from target topic
+                        overlap = [i for i in list(regulon_s_tf.index[regulon_s_tf>0]) if i in top_tfs_e] 
+                    elif regulation == "repression":
+                        #repressed TRs from target topic
+                        overlap = [i for i in list(regulon_s_tf.index[regulon_s_tf<0]) if i in top_tfs_e] 
+                    
+                    #if any TR from target topic is targeted    
+                    if len(overlap)>0: 
+                        target.extend(overlap)
+                        source.extend(list(np.repeat(tf,len(overlap))))
+                        for val in overlap:
+                            weight_acc.extend([acc[topic_s].loc[val]])
+                            weight_exp.extend([gex[topic_s].loc[val]])
+                            weight_act_score.extend([activity[topic_t].loc[val]])                            
+                if len(target)>0:
+                    source_tf.extend(source)
+                    target_tf.extend(target)
+                    source_topic.extend(list(np.repeat(topic_s,len(source))))
+                    target_topic.extend(list(np.repeat(topic_t,len(source))))
+                    weight_val_acc.extend(weight_acc)
+                    weight_val_exp.extend(weight_exp)
+                    weight_val_act_score.extend(weight_act_score)
+                    if use_exp == False:
+                        #total regulatory effect of TFs in source topic towards TRs in target topic
+                        weight_val_tot.extend([sum(x*y for x, y in list(zip(weight_acc,weight_act_score)))])
+                    else:
+                        #total regulatory effect of TFs in source topic towards TRs in target topic, using expression to assess TR priming
+                        weight_val_tot.extend([sum(x*y for x, y in list(zip(weight_exp,weight_act_score)))])
+                else:
+                    weight_val_tot.extend([0])
+                weight_s.append(topic_s)
+                weight_t.append(topic_t)
+            else: #positive control - source and target topic are the same
+                top_tfs_e = top_tfs_s
+                for tf in tf_s_exp:
+                    regulon_s_tf = regulon_s[tf] #target genes of TF
+                    
+                    if regulation == "activation":
+                        if (tf in top_tfs_e):
+                            source.extend([tf])
+                            target.extend(["self"])
+                            weight_exp.extend([gex[topic_s].loc[tf]])
+                            weight_acc.extend([acc[topic_s].loc[tf]])
+                            weight_act_score.extend([activity[topic_t].loc[tf]])
+                        #activated TRs from own topic
+                        overlap = [i for i in list(regulon_s_tf.index[regulon_s_tf>0]) if i in top_tfs_e] 
+                    elif regulation == "repression":
+                        #repressed TRs from own topic
+                        overlap = [i for i in list(regulon_s_tf.index[regulon_s_tf<0]) if i in top_tfs_e] 
+
+                    if len(overlap)>0:
+                        target.extend(overlap)
+                        source.extend(list(np.repeat(tf,len(overlap))))
+                        for val in overlap:
+                            weight_acc.extend([acc[topic_s].loc[val]])
+                            weight_exp.extend([gex[topic_s].loc[val]])
+                            weight_act_score.extend([activity[topic_t].loc[val]]) #Downstream effect                            
+                if len(target)>0:
+                    source_tf.extend(source)
+                    target_tf.extend(target)
+                    source_topic.extend(list(np.repeat(topic_s,len(source))))
+                    target_topic.extend(list(np.repeat(topic_t,len(source))))
+                    weight_val_acc.extend(weight_acc)
+                    weight_val_exp.extend(weight_exp)
+                    weight_val_act_score.extend(weight_act_score)
+                    if use_exp==False:
+                        weight_val_tot.extend([sum(x*y for x, y in list(zip(weight_acc,weight_act_score)))])
+                    else:
+                        weight_val_tot.extend([sum(x*y for x, y in list(zip(weight_exp,weight_act_score)))])
+                else:
+                    weight_val_tot.extend([0])
+                weight_s.append(topic_s)
+                weight_t.append(topic_t)                
+    
+
+    #Contribution of each TF-TR pair to TAP/TRS values
+    tf_tr_links = pd.DataFrame({'Source_topic':source_topic, 'Target_topic':target_topic, 'TF':source_tf,
+                                'TR':target_tf, 'Weight_acc':weight_val_acc, 'Weight_exp':weight_val_exp, 
+                                'Weight_act_score':weight_val_act_score})
+
+    #Activation/repression potential between each pair of topics
+    topic_reg_matrix = np.array(weight_val_tot).reshape(len(topics_s),len(topics))
+    topic_reg_matrix = pd.DataFrame(topic_reg_matrix, columns = topics)
+    topic_reg_matrix.index = topics_s
+
+    #Compute background activation/repression potential between pairs of topics using randomized eGRNs. 
+    if compute_significance:
+        topic_reg_matrix , random_background = compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, acc, regulons, genes, TFs, source_topics = source_topics, gex_thresh=gex_thresh, TR_thresh=TR_thresh, regulation=regulation, use_exp=use_exp, n=n, percentile=percentile)
+    else:
+        random_background=[]
+        
+        
+    return topic_reg_matrix, tf_tr_links, random_background
+
+def compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, acc, regulons, genes,TFs, gex_thresh=0.5, TR_thresh=0.05, regulation="activation", source_topics=[], use_exp=False, n=1000, percentile=90):
     """
     Compute topic regulation potential with randomized GRNs to assess significance of real values.
 
@@ -315,11 +501,18 @@ def compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, 
             Default is 1000.
         percentile: Percentile of randomized TAP/TRS value distribution for each topic pair, above which
             real TAP/TRS values for the same topic pair are considered significant.
+        source_topics:
     """
     
     logger.info("Computing significance of regulatory interactions")
     randomized_weights = np.empty(shape=[n,0])
-    for topic_s in tqdm(topics):
+    
+    if len(source_topics)>0:
+        topics_s = source_topics
+    else:
+        topics_s = topics
+        
+    for topic_s in tqdm(topics_s):
         #Expressed TFs in source topic
         tf_s_exp = list(gex.index[gex[topic_s]>gex_thresh]) 
         
@@ -394,7 +587,7 @@ def compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, 
     
     source_topic=[]
     target_topic =[]
-    for s in topics:
+    for s in topics_s:
         for e in topics:
             source_topic.extend([s])
             target_topic.extend([e])
@@ -413,9 +606,9 @@ def compute_randomized_topic_regulation(topic_reg_matrix,topics, activity, gex, 
     random_background = random_background[ord_columns]
 
     #Reshape background threshold values to match topic regulation potential
-    background_mask = np.array(percentile_vals).reshape(len(topics),len(topics))
+    background_mask = np.array(percentile_vals).reshape(len(topics_s),len(topics))
     background_mask = pd.DataFrame(background_mask, columns = topics)
-    background_mask.index = topics
+    background_mask.index = topics_s
 
     #Remove non-significant TAP/TRS values 
     topic_reg_matrix[topic_reg_matrix<background_mask]=0  
@@ -456,9 +649,11 @@ def get_net_regulatory_interactions(topic_act_matrix, topic_rep_matrix, topics, 
                 ids=ids_rep
             else:
                 ids=ids_act
+        else:
+            ids = ids_act
     
         random_act_background = random_act_background[ids]
-        random_rep_background = random_act_background[ids]
+        random_rep_background = random_rep_background[ids]
         rand_background_dist = random_act_background-random_rep_background
         rand_background_dist = np.array(rand_background_dist)
         percentile_upper = []
@@ -467,15 +662,15 @@ def get_net_regulatory_interactions(topic_act_matrix, topic_rep_matrix, topics, 
             p_upper = np.percentile(rand_background_dist[i],percentile)
             p_lower = np.percentile(rand_background_dist[i],100-percentile)
             percentile_upper.extend([p_upper])
-            percentile_lower.extend([p_upper])
+            percentile_lower.extend([p_lower])
     
         
         #Significance threshold for TAP-TRS values between each pair of topics
-        background_mask_up = percentile_upper.reshape(len(topics),len(topics))
+        background_mask_up = np.array(percentile_upper).reshape(len(topics),len(topics))
         background_mask_up = pd.DataFrame(background_mask_up, columns = topics)
         background_mask_up.index = topics
     
-        background_mask_low = percentile_lower.reshape(len(topics),len(topics))
+        background_mask_low = np.array(percentile_lower).reshape(len(topics),len(topics))
         background_mask_low = pd.DataFrame(background_mask_low, columns = topics)
         background_mask_low.index = topics
     
@@ -483,7 +678,8 @@ def get_net_regulatory_interactions(topic_act_matrix, topic_rep_matrix, topics, 
         net_topic_reg_matrix_u = net_topic_reg_matrix.copy()    
         net_topic_reg_matrix_u[net_topic_reg_matrix_u<background_mask_up]=0
     
-        net_topic_reg_matrix_l = net_topic_reg_matrix.copy()    
+        net_topic_reg_matrix_l = net_topic_reg_matrix.copy()
+        net_topic_reg_matrix_l[net_topic_reg_matrix_l>0]=0
         net_topic_reg_matrix_l[net_topic_reg_matrix_l>background_mask_low]=0
 
         net_topic_reg_matrix = net_topic_reg_matrix_u+net_topic_reg_matrix_l
@@ -491,7 +687,7 @@ def get_net_regulatory_interactions(topic_act_matrix, topic_rep_matrix, topics, 
     return net_topic_reg_matrix
         
     
-def scale_topic_regulation_target_topic(topic_reg_matrix, scaling = "posCtrl", specificCtrl=[], return_scaling_vals = False):
+def scale_topic_regulation_target_topic(topic_reg_matrix, gex, topics, gex_thresh=0.5, scaling = "posCtrl", specificCtrl=[], return_scaling_vals = False):
     """
     Compute activation/repression potential between pairs of topics.
 
@@ -504,32 +700,49 @@ def scale_topic_regulation_target_topic(topic_reg_matrix, scaling = "posCtrl", s
     Args:
         topic_reg_matrix: Dataframe (source topics x target topics) containing TAP or TRS values
             for each topic pair, normalized by total number of expressed TFs in source topic.
-        scaling: String determining which value to use for scaling all links targeting each topic
-            (columns). Can be either "posCtrl" or "max". 
-        specificCtrl: User provided values to scale links targeting each topic (columns). Must be 
-            list of tuples indicating which value to use to scale each column.
-            e.g.,  [(topicA, valA), (topicB,valB),...].
+        gex: Dataframe of TFs x Topics containing average expression of each TF on the cells where
+            each topic is active. Should be scaled across topics (values between 0 and 1)
+        topics: list of strings with all topics to consider. Must match topic names in activity, 
+            gex and acc dataframes.
+        gex_thresh: Expression threshold determining set of TFs expressed in cells of each topic.
+            Default is 0.5.
+        scaling: Method to use for scaling all links targeting each topic
+            (columns). Can be either "posCtrl", "max" or a user-provided list of tuples with specific values
+            to use per topic e.g., [(topicA, valA), (topicB,valB)]
+        specificCtrl: Specific topic to be used to scale links targeting a given topic (columns). Must be 
+            list of tuples indicating which topic X to use to scale the column of topic Y.
+            e.g.,  [(topicY, topicX), ...].
 
     """
-    if scaling not in ("posCtrl", "max"):
-        raise ValueError("Invalid scaling mode. Only 'posCtrl' or 'max' are allowed.")
+           
+    #Number of expressed TFs per topic
+    gex = gex[topics]
+    num_exp_TFs_per_topic=pd.DataFrame((gex>gex_thresh).sum(axis=0))
+    num_exp_TFs_per_topic = num_exp_TFs_per_topic.transpose()
+    num_exp_TFs_per_topic.columns=topics
     
+    #Normalize TAP/TRS values by number of TFs expressed in each source topic
+    for t in topics:
+        topic_reg_matrix.loc[t]=topic_reg_matrix.loc[t]/num_exp_TFs_per_topic[t][0]
+        
     scaling_vals = []
     if len(specificCtrl)>0:
         scaled_col = []
-        for target_t,val in specificCtrl:
+        for target_t,scaling_t in specificCtrl:
             scaled_col.extend([target_t])
-            scaling_vals.extend([val])
-            topic_reg_matrix[target_t]=topic_reg_matrix[target_t]/val
+            scaling_vals.extend([topic_reg_matrix[target_t].loc[scaling_t]])
+            topic_reg_matrix[target_t]=topic_reg_matrix[target_t]/topic_reg_matrix[target_t].loc[scaling_t]
         if len(scaled_col)<len(topic_reg_matrix.columns):
             unscaled_cols = [c for c in topic_reg_matrix.columns if c not in scaled_col]
             for t in unscaled_cols:
                 if scaling == "posCtrl":
                     scaling_vals.extend([topic_reg_matrix[t].loc[t]])
                     topic_reg_matrix[t]=topic_reg_matrix[t]/topic_reg_matrix[t].loc[t]
-                else:
+                elif scaling == "max":
                     scaling_vals.extend([topic_reg_matrix[t].max()])
                     topic_reg_matrix[t]=topic_reg_matrix[t]/topic_reg_matrix[t].max()
+                else:
+                    raise ValueError("Invalid scaling method. Please specify which scaling method to use for remaining topics: posCtrl or max.")
         else:
             unscaled_cols=[]
         cols=scaled_col+unscaled_cols
@@ -539,10 +752,16 @@ def scale_topic_regulation_target_topic(topic_reg_matrix, scaling = "posCtrl", s
             for t in topic_reg_matrix.columns:
                 scaling_vals.extend([topic_reg_matrix[t].loc[t]])
                 topic_reg_matrix[t]=topic_reg_matrix[t]/topic_reg_matrix[t].loc[t]
-        else:
+        elif scaling == "max":
             for t in topic_reg_matrix.columns:
                 scaling_vals.extend([topic_reg_matrix[t].max()])
                 topic_reg_matrix[t]=topic_reg_matrix[t]/topic_reg_matrix[t].max()
+        elif type(scaling) is list:
+            for target_t,val in scaling:
+                scaling_vals.extend([val])
+                topic_reg_matrix[target_t]=topic_reg_matrix[target_t]/val
+        else:
+            raise ValueError("Invalid scaling method. Please provide a list of scaling values or specify which scaling method to use: posCtrl or max.")
         scaling_vals_col = [(x,y) for x,y in zip(topic_reg_matrix.columns,scaling_vals)]
 
     if return_scaling_vals:
