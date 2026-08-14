@@ -12,7 +12,14 @@ Heinzelmann E, Gracia T, Memi T *et al.*
 > Much of the analysis here is
 > downstream of scDoRI ([bioFAM/scDoRI](https://github.com/bioFAM/scDoRI)). See [Citation](#citation).
 
-For data, see [Data availability](#data-availability).
+## Data
+
+Regulatory output and supporting data are archived on Zenodo:
+https://doi.org/10.5281/zenodo.21873381
+see [Data availability](#data-availability).
+
+Method implementation: https://github.com/bioFAM/scDoRI
+(archived at https://doi.org/10.5281/zenodo.21937078)
 
 ---
 
