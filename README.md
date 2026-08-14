@@ -1,5 +1,5 @@
 # GBM analysis
-
+[![DOI](https://zenodo.org/badge/964108260.svg)](https://doi.org/10.5281/zenodo.21937173)
 Analysis code for **Decoding Plasticity Regulators and Transition Trajectories in
 Glioblastoma with Single-cell Multiomics** — Saraswat M, Rueda-Gensini L,
 Heinzelmann E, Gracia T, Memi T *et al.*
