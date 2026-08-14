@@ -1,0 +1,37 @@
+{
+  "upload_type": "software",
+  "title": "Analysis code for the human glioblastoma single-cell multiome regulatory atlas",
+  "description": "<p>Analysis code accompanying a study of gene regulatory programs and cell state plasticity in human glioblastoma, based on paired single-cell RNA and ATAC (multiome) profiling.</p><p>The repository contains the processing and analysis pipelines used to generate the figures and supplementary regulatory output of the paper, including application of scDoRI, downstream analyses of topic activity, transcription factor regulation and peak-level annotations.</p><p>Method implementation: <a href=\"https://github.com/bioFAM/scDoRI\">https://github.com/bioFAM/scDoRI</a><br>Regulatory output and supporting data: <a href=\"https://doi.org/10.5281/zenodo.21873381\">https://doi.org/10.5281/zenodo.21873381</a></p>",
+  "creators": [
+    {
+      "name": "Saraswat, Manu",
+      "affiliation": "European Molecular Biology Laboratory (EMBL) and German Cancer Research Center (DKFZ), Heidelberg, Germany"
+    },
+    {
+      "name": "Rueda-Gensini, Laura",
+      "affiliation": "German Cancer Research Center (DKFZ) and Hector Institute for Translational Brain Research (HITBR), Heidelberg, Germany"
+    }
+  ],
+  "keywords": [
+    "glioblastoma",
+    "single-cell multiome",
+    "gene regulatory network",
+    "transcription factor",
+    "scATAC-seq",
+    "scRNA-seq",
+    "cell state plasticity",
+    "scDoRI"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.21873381",
+      "relation": "references",
+      "resource_type": "dataset"
+    },
+    {
+      "identifier": "10.5281/zenodo.21937079",
+      "relation": "requires",
+      "resource_type": "software"
+    }
+  ]
+}
